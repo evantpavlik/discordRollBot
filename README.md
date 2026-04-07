@@ -1,5 +1,7 @@
 ;roll69 — Roll a number between 1–500. Tracks 69 and 420 hits.
+
 ;roll69ldr — Show the 69/420 hit leaderboard.
+
 🍺 Cold Ones
 ;coldone @user — Send a beer to someone (30 min cooldown).
 ;coldones — Show the beer leaderboard.
