@@ -160,6 +160,14 @@ client.on('messageCreate', async (message) => {
           ].join('\n'),
         },
         {
+          name: '🏇 Horse Race',
+          value: [
+            '`;race` — Open a race lobby (up to 10 riders, 10 min window).',
+            '`;racejoin` — Jump into the open race lobby.',
+            '`;racestart` — Host force-starts the race early (min 2 riders).',
+          ].join('\n'),
+        },
+        {
           name: '🔴 Connect 4',
           value: [
             '`;c4 @user` — Challenge someone to Connect 4.',
@@ -190,17 +198,7 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // ─── ;deeds ─────────────────────────────────────────────────────────────────
-  if (content === ';deeds') {
-    await message.reply('lol gay');
-    return;
-  }
 
-  // ─── ;elton ─────────────────────────────────────────────────────────────────
-  if (content === ';elton') {
-    await message.reply('lol not gay');
-    return;
-  }
 
   // ─── ;roll69 ────────────────────────────────────────────────────────────────
   if (content === ';roll69') {
@@ -339,44 +337,44 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // ─── ;coldones leaderboard ───────────────────────────────────────────────────
-  if (content === ';coldones') {
-    const beerData = loadBeerData();
-    const users    = Object.values(beerData);
+  // // ─── ;coldones leaderboard ───────────────────────────────────────────────────
+  // if (content === ';coldones') {
+  //   const beerData = loadBeerData();
+  //   const users    = Object.values(beerData);
 
-    if (users.length === 0) {
-      await message.reply('No beers have been sent yet! Use `;coldone @user` to get the round started. 🍺');
-      return;
-    }
+  //   if (users.length === 0) {
+  //     await message.reply('No beers have been sent yet! Use `;coldone @user` to get the round started. 🍺');
+  //     return;
+  //   }
 
-    users.sort((a, b) => {
-      const totalA = a.beersSent + a.beersReceived;
-      const totalB = b.beersSent + b.beersReceived;
-      if (totalB !== totalA) return totalB - totalA;
-      return b.beersReceived - a.beersReceived;
-    });
+  //   users.sort((a, b) => {
+  //     const totalA = a.beersSent + a.beersReceived;
+  //     const totalB = b.beersSent + b.beersReceived;
+  //     if (totalB !== totalA) return totalB - totalA;
+  //     return b.beersReceived - a.beersReceived;
+  //   });
 
-    const medals = ['🥇', '🥈', '🥉'];
+  //   const medals = ['🥇', '🥈', '🥉'];
 
-    const lines = users.map((u, i) => {
-      const medal = medals[i] ?? `**#${i + 1}**`;
-      const total = u.beersSent + u.beersReceived;
-      return (
-        `${medal} **${u.username}**\n` +
-        `　📤 Sent: **${u.beersSent}** • 📥 Received: **${u.beersReceived}** • 🍺 Total: **${total}**`
-      );
-    });
+  //   const lines = users.map((u, i) => {
+  //     const medal = medals[i] ?? `**#${i + 1}**`;
+  //     const total = u.beersSent + u.beersReceived;
+  //     return (
+  //       `${medal} **${u.username}**\n` +
+  //       `　📤 Sent: **${u.beersSent}** • 📥 Received: **${u.beersReceived}** • 🍺 Total: **${total}**`
+  //     );
+  //   });
 
-    const embed = new EmbedBuilder()
-      .setColor('#F4A020')
-      .setTitle('🍺 Cold One Leaderboard')
-      .setDescription(lines.join('\n\n'))
-      .setFooter({ text: 'Sorted by total beers • Use ;coldone @user to send a round!' })
-      .setTimestamp();
+  //   const embed = new EmbedBuilder()
+  //     .setColor('#F4A020')
+  //     .setTitle('🍺 Cold One Leaderboard')
+  //     .setDescription(lines.join('\n\n'))
+  //     .setFooter({ text: 'Sorted by total beers • Use ;coldone @user to send a round!' })
+  //     .setTimestamp();
 
-    await message.reply({ embeds: [embed] });
-    return;
-  }
+  //   await message.reply({ embeds: [embed] });
+  //   return;
+  // }
 
   // ─── ;420 joint system ───────────────────────────────────────────────────────
   if (content.startsWith(';420')) {
@@ -933,6 +931,122 @@ client.on('messageCreate', async (message) => {
       return;
     }
   }
+
+  // ─── ;race ───────────────────────────────────────────────────────────────────
+  if (content === ';race' || content === ';racejoin') {
+
+    // ── ;race — open a lobby ──────────────────────────────────────────────────
+    if (content === ';race') {
+      if (raceLobbies.has(message.channel.id)) {
+        const lobby = raceLobbies.get(message.channel.id);
+        if (lobby.started) {
+          await message.reply('🏇 A race is already in progress in this channel!');
+        } else {
+          await message.reply(`🏇 A race lobby is already open! Type \`;racejoin\` to enter. (${lobby.riders.length}/10 joined)`);
+        }
+        return;
+      }
+
+      const lobby = {
+        hostId:   message.author.id,
+        hostName: message.author.username,
+        riders:   [{ id: message.author.id, name: message.author.username }],
+        started:  false,
+        channelId: message.channel.id,
+      };
+      raceLobbies.set(message.channel.id, lobby);
+
+      const embed = new EmbedBuilder()
+        .setColor('#8B4513')
+        .setTitle('🏇 Horse Race — Lobby Open!')
+        .setDescription(
+          `**${message.author.username}** is opening a race!\n\n` +
+          `Type \`;racejoin\` to saddle up! 🐴\n\n` +
+          `**Riders (1/10):**\n🏇 ${message.author.username}\n\n` +
+          `Race starts automatically after **10 minutes** or when the host types \`;racestart\`.`
+        )
+        .setFooter({ text: 'Minimum 2 riders to start • Max 10' })
+        .setTimestamp();
+
+      await message.reply({ embeds: [embed] });
+
+      // Auto-start or cancel after 10 minutes
+      setTimeout(async () => {
+        const l = raceLobbies.get(message.channel.id);
+        if (!l || l.started) return;
+        if (l.riders.length < 2) {
+          raceLobbies.delete(message.channel.id);
+          try { await message.channel.send('🏇 Race cancelled — not enough riders joined in time. (Need at least 2)'); } catch {}
+          return;
+        }
+        await runRace(message.channel, l);
+      }, 10 * 60 * 1000);
+
+      return;
+    }
+
+    // ── ;racejoin ─────────────────────────────────────────────────────────────
+    if (content === ';racejoin') {
+      if (!raceLobbies.has(message.channel.id)) {
+        await message.reply('🏇 No race lobby is open! Use `;race` to start one.');
+        return;
+      }
+      const lobby = raceLobbies.get(message.channel.id);
+      if (lobby.started) {
+        await message.reply("🏇 The race already started — you're too late!");
+        return;
+      }
+      if (lobby.riders.some(r => r.id === message.author.id)) {
+        await message.reply("🏇 You're already in the race!");
+        return;
+      }
+      if (lobby.riders.length >= 10) {
+        await message.reply('🏇 The race is full! (10/10)');
+        return;
+      }
+
+      lobby.riders.push({ id: message.author.id, name: message.author.username });
+
+      const riderList = lobby.riders.map((r, i) => `${HORSE_EMOJIS[i]} ${r.name}`).join('\n');
+      const embed = new EmbedBuilder()
+        .setColor('#8B4513')
+        .setTitle(`🏇 ${message.author.username} joined the race!`)
+        .setDescription(
+          `**Riders (${lobby.riders.length}/10):**\n${riderList}\n\n` +
+          (lobby.riders.length >= 2
+            ? `Host can type \`;racestart\` to begin early!`
+            : `Need at least 1 more rider to start.`)
+        )
+        .setFooter({ text: 'Type ;racejoin to enter!' })
+        .setTimestamp();
+
+      await message.reply({ embeds: [embed] });
+      return;
+    }
+  }
+
+  // ;racestart — host forces start
+  if (content === ';racestart') {
+    if (!raceLobbies.has(message.channel.id)) {
+      await message.reply('🏇 No race lobby is open! Use `;race` to start one.');
+      return;
+    }
+    const lobby = raceLobbies.get(message.channel.id);
+    if (lobby.started) {
+      await message.reply('🏇 Race already started!');
+      return;
+    }
+    if (message.author.id !== lobby.hostId) {
+      await message.reply(`🏇 Only **${lobby.hostName}** (the host) can force-start the race!`);
+      return;
+    }
+    if (lobby.riders.length < 2) {
+      await message.reply('🏇 Need at least 2 riders to start!');
+      return;
+    }
+    await runRace(message.channel, lobby);
+    return;
+  }
 });
 
 // ─── Connect 4 state & helpers ────────────────────────────────────────────────
@@ -972,6 +1086,120 @@ function checkC4Winner(board) {
     }
   }
   return null;
+}
+
+// ─── Race state & helpers ─────────────────────────────────────────────────────
+const raceLobbies = new Map();
+
+const HORSE_EMOJIS  = ['🐴','🦄','🐎','🏇','🐻','🐯','🦊','🐺','🦁','🐸'];
+const TRACK_LENGTH  = 20; // steps to finish line
+const RACE_DURATION = 20; // seconds total
+const TICK_INTERVAL = 2000; // ms between updates (10 ticks over 20s)
+const TICKS         = RACE_DURATION * 1000 / TICK_INTERVAL;
+
+function buildTrack(position, emoji) {
+  const filled = Math.min(Math.floor(position), TRACK_LENGTH);
+  const track  = '▪️'.repeat(filled) + emoji + '▫️'.repeat(Math.max(0, TRACK_LENGTH - filled));
+  return track + '🏁';
+}
+
+function buildRaceBoard(riders, positions, finished) {
+  return riders.map((r, i) => {
+    const pos   = positions[i];
+    const medal = finished[i] === 1 ? ' 🥇' : finished[i] === 2 ? ' 🥈' : finished[i] === 3 ? ' 🥉' : '';
+    return `\`${r.name.padEnd(12).slice(0, 12)}\` ${buildTrack(pos, HORSE_EMOJIS[i])}${medal}`;
+  }).join('\n');
+}
+
+async function runRace(channel, lobby) {
+  lobby.started = true;
+
+  const riders    = lobby.riders;
+  const positions = riders.map(() => 0);
+  const finished  = riders.map(() => null);
+  let   place     = 1;
+
+  // Countdown
+  const countdownEmbed = new EmbedBuilder()
+    .setColor('#F39C12')
+    .setTitle('🏇 Race Starting!')
+    .setDescription(
+      `**Riders:**\n` +
+      riders.map((r, i) => `${HORSE_EMOJIS[i]} **${r.name}**`).join('\n') +
+      `\n\n🚦 Get ready... **3... 2... 1... GO!** 🚦`
+    )
+    .setTimestamp();
+
+  let raceMsg;
+  try {
+    raceMsg = await channel.send({ embeds: [countdownEmbed] });
+  } catch { raceLobbies.delete(channel.id); return; }
+
+  await new Promise(r => setTimeout(r, 1500));
+
+  // Race loop
+  for (let tick = 0; tick < TICKS; tick++) {
+    for (let i = 0; i < riders.length; i++) {
+      if (finished[i] !== null) continue;
+
+      // Completely fresh random roll every tick for every horse
+      // Base: 1.0–2.5 steps, with independent burst/stumble per horse per tick
+      const base    = 1.0 + Math.random() * 1.5;
+      const burst   = Math.random() < 0.25 ? 1.5 + Math.random() * 1.0 : 1.0;
+      const stumble = Math.random() < 0.15 ? 0.1 + Math.random() * 0.3 : 1.0;
+      const step    = base * burst * stumble;
+
+      positions[i] = Math.min(TRACK_LENGTH, positions[i] + step);
+
+      if (positions[i] >= TRACK_LENGTH && finished[i] === null) {
+        finished[i] = place++;
+      }
+    }
+
+    const allDone  = finished.every(f => f !== null);
+    const progress = Math.round(((tick + 1) / TICKS) * 100);
+
+    const board = buildRaceBoard(riders, positions, finished);
+    const progressBar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
+
+    const embed = new EmbedBuilder()
+      .setColor('#27AE60')
+      .setTitle(`🏇 Race in Progress!  [${progressBar}] ${progress}%`)
+      .setDescription(board)
+      .setFooter({ text: `Tick ${tick + 1}/${TICKS} • ${Math.round(RACE_DURATION - (tick + 1) * (RACE_DURATION / TICKS))}s remaining` })
+      .setTimestamp();
+
+    try { await raceMsg.edit({ embeds: [embed] }); } catch {}
+
+    if (allDone) break;
+    await new Promise(r => setTimeout(r, TICK_INTERVAL));
+  }
+
+  // Mark any still running horses as DNF position
+  for (let i = 0; i < riders.length; i++) {
+    if (finished[i] === null) finished[i] = place++;
+  }
+
+  const results = riders
+    .map((r, i) => ({ name: r.name, emoji: HORSE_EMOJIS[i], place: finished[i] }))
+    .sort((a, b) => a.place - b.place);
+
+  const placeEmoji = ['🥇', '🥈', '🥉'];
+  const podium = results.map((r, i) =>
+    `${placeEmoji[i] ?? `**#${i + 1}**`} ${r.emoji} **${r.name}**`
+  ).join('\n');
+
+  const finalBoard = buildRaceBoard(riders, positions.map(() => TRACK_LENGTH), finished);
+
+  const finalEmbed = new EmbedBuilder()
+    .setColor('#F1C40F')
+    .setTitle('🏆 Race Finished!')
+    .setDescription(finalBoard + `\n\n**🏆 Final Results:**\n${podium}`)
+    .setFooter({ text: 'Use ;race to run another!' })
+    .setTimestamp();
+
+  try { await raceMsg.edit({ embeds: [finalEmbed] }); } catch {}
+  raceLobbies.delete(channel.id);
 }
 
 // ─── Start the bot ────────────────────────────────────────────────────────────
